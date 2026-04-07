@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 )
 
 // Definindo a estrutura da transação (Paradigma Imperativo - Estrutura de Dados)
@@ -23,35 +24,48 @@ func main() {
 		{19, 45.00, "Crédito"}, {20, 15.00, "Débito"},
 	}
 
-	// Canais para comunicação entre as Goroutines e a função principal
+	// Canais para comunicação entre as Goroutines
 	canalCreditos := make(chan float64)
 	canalDebitos := make(chan float64)
 
-	// 2. Processamento Concorrente: Goroutine para CRÉDITOS
+	// WaitGroup para sincronizar o encerramento das Goroutines
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// 2. Processamento Concorrente - Abordagem Imperativa (uso de loops e condicionais)
+
+	// Goroutine para Créditos
 	go func() {
-		somaCreditos := 0.0
-		// Iteração imperativa (for + if)
+		defer wg.Done()
+		var soma float64 = 0
 		for i := 0; i < len(transacoes); i++ {
 			if transacoes[i].Tipo == "Crédito" {
-				somaCreditos += transacoes[i].Valor
+				soma += transacoes[i].Valor
 			}
 		}
-		canalCreditos <- somaCreditos // Envia o resultado total
+		canalCreditos <- soma
 	}()
 
-	// 3. Processamento Concorrente: Goroutine para DÉBITOS
+	// Goroutine para Débitos
 	go func() {
-		somaDebitos := 0.0
-		// Iteração imperativa (for + if)
+		defer wg.Done()
+		var subtracao float64 = 0
 		for i := 0; i < len(transacoes); i++ {
 			if transacoes[i].Tipo == "Débito" {
-				somaDebitos += transacoes[i].Valor
+				subtracao += transacoes[i].Valor
 			}
 		}
-		canalDebitos <- somaDebitos // Envia o resultado total
+		canalDebitos <- subtracao
 	}()
 
-	// 4. Sincronização e Cálculo do Saldo Final na rotina principal
+	// Rotina principal aguarda o processamento e fecha os canais
+	go func() {
+		wg.Wait()
+		close(canalCreditos)
+		close(canalDebitos)
+	}()
+
+	// 3. Resultado Final: Coleta dos canais e cálculo do saldo
 	totalCredito := <-canalCreditos
 	totalDebito := <-canalDebitos
 	saldoFinal := totalCredito - totalDebito
@@ -61,5 +75,9 @@ func main() {
 	fmt.Printf("Total Processado em Créditos: R$ %.2f\n", totalCredito)
 	fmt.Printf("Total Processado em Débitos:  R$ %.2f\n", totalDebito)
 	fmt.Println("-------------------------------------------")
-	fmt.Printf("SALDO FINAL DA CONTA:         R$ %.2f\n", saldoFinal)
+	if saldoFinal < 0 {
+		fmt.Printf("Atenção: Conta negativada! Saldo: R$ %.2f\n", saldoFinal)
+	} else {
+		fmt.Printf("Saldo Final: R$ %.2f\n", saldoFinal)
+	}
 }
