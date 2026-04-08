@@ -80,4 +80,9 @@ func main() {
 	} else {
 		fmt.Printf("Saldo Final: R$ %.2f\n", saldoFinal)
 	}
+
+	
+	fmt.Println("\n-------------------------------------------")
+	fmt.Println("Pressione 'Enter' para encerrar o programa...")
+	fmt.Scanln() // Esta linha trava a execução até que você aperte Enter
 }
